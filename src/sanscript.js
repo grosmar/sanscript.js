@@ -364,6 +364,74 @@ function exportSanscriptSingleton (global, schemes) {
     };
 
     /**
+     * Transliterate from a Brahmic script.
+     *
+     * @param data     the string to transliterate
+     * @param map      map data generated from makeMap()
+     * @param options  transliteration options
+     * @return         the finished string
+     */
+    const transliterateSharada = function (data, map, _options) {
+        const buf = [];
+        const consonants = map.consonants;
+        const letters = map.letters;
+        const marks = map.marks;
+        const toRoman = map.toRoman;
+
+        let danglingHash = false;
+        let hadRomanConsonant = false;
+        let temp;
+        let skippingTrans = false;
+
+        for (let i = 0, L; (L = data.charAt(i) + data.charAt(i+1)); i=i+2) {
+            // Toggle transliteration state
+            if (L === "#") {
+                if (danglingHash) {
+                    skippingTrans = !skippingTrans;
+                    danglingHash = false;
+                } else {
+                    danglingHash = true;
+                }
+                if (hadRomanConsonant) {
+                    buf.push(map.toSchemeA);
+                    hadRomanConsonant = false;
+                }
+                continue;
+            } else if (skippingTrans) {
+                buf.push(L);
+                continue;
+            }
+
+            if ((temp = marks[L]) !== undefined) {
+                buf.push(temp);
+                hadRomanConsonant = false;
+            } else {
+                if (danglingHash) {
+                    buf.push("#");
+                    danglingHash = false;
+                }
+                if (hadRomanConsonant) {
+                    buf.push(map.toSchemeA);
+                    hadRomanConsonant = false;
+                }
+
+                // Push transliterated letter if possible. Otherwise, push
+                // the letter itself.
+                if ((temp = letters[L])) {
+                    buf.push(temp);
+                    hadRomanConsonant = toRoman && (L in consonants);
+                } else {
+                    buf.push(L);
+                }
+            }
+        }
+        if (hadRomanConsonant) {
+            buf.push(map.toSchemeA);
+        }
+        return buf.join("");
+    };
+
+    /**
      * Transliterate from one script to another.
      *
      * @param data     the string to transliterate
@@ -425,7 +493,11 @@ function exportSanscriptSingleton (global, schemes) {
         let result = "";
         if (map.fromRoman) {
             result = transliterateRoman(data, map, options);
-        } else {
+        }
+        else if (from == "sharada") {
+            result = transliterateSharada(data, map, options);
+        }
+        else {
             result = transliterateBrahmic(data, map, options);
         }
         if (to === "tamil_superscripted") {
