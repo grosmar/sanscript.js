@@ -490,6 +490,10 @@ function exportSanscriptSingleton (global, schemes) {
             console.error("transliteration from tamil_superscripted not fully implemented!");
         }
 
+        if (from === "iast") {
+            data = data.toLocaleLowerCase();
+        }
+
         let result = "";
         if (map.fromRoman) {
             result = transliterateRoman(data, map, options);
